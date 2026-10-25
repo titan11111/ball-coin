@@ -14,6 +14,9 @@ public class CoinBallGame : MonoBehaviour
     AudioSource source;
     AudioClip blip;
     AudioClip fanfare;
+    AudioClip whoClip;
+    AudioClip weatherClip;
+    bool moved;
     int remaining;
     float elapsed;
     bool muted;
@@ -24,7 +27,7 @@ public class CoinBallGame : MonoBehaviour
     Rect[] blocks = new Rect[6];
     int blockCount;
     Texture2D pixel;
-    Texture2D titleTex, dragTex, collectTex, startTex, remainTex, pauseTex, pauseHeadTex;
+    Texture2D titleTex, handTex, creditTex, collectTex, startTex, remainTex, pauseTex, pauseHeadTex;
     Texture2D soundOnTex, soundOffTex, resumeTex, fromStartTex, clearTex, againTex, colonTex;
     Texture2D[] digits = new Texture2D[10];
 
@@ -45,7 +48,8 @@ public class CoinBallGame : MonoBehaviour
         pixel.SetPixel(0, 0, Color.white);
         pixel.Apply();
         titleTex = Resources.Load<Texture2D>("Ui/title");
-        dragTex = Resources.Load<Texture2D>("Ui/drag");
+        handTex = Resources.Load<Texture2D>("Ui/hand");
+        creditTex = Resources.Load<Texture2D>("Ui/credit");
         collectTex = Resources.Load<Texture2D>("Ui/collect");
         startTex = Resources.Load<Texture2D>("Ui/start");
         remainTex = Resources.Load<Texture2D>("Ui/remain");
@@ -58,6 +62,8 @@ public class CoinBallGame : MonoBehaviour
         clearTex = Resources.Load<Texture2D>("Ui/clear");
         againTex = Resources.Load<Texture2D>("Ui/again");
         colonTex = Resources.Load<Texture2D>("Ui/colon");
+        whoClip = Resources.Load<AudioClip>("Voice/who");
+        weatherClip = Resources.Load<AudioClip>("Voice/weather");
         for (int i = 0; i < 10; i++) digits[i] = Resources.Load<Texture2D>("Ui/d" + i);
         Screen.sleepTimeout = SleepTimeout.NeverSleep;
         Application.targetFrameRate = 60;
@@ -89,6 +95,7 @@ public class CoinBallGame : MonoBehaviour
         {
             origin = pointer;
             dragging = phase == Phase.Play && !Hits(pointer);
+            if (dragging) moved = true;
         }
 
         if (dragging)
@@ -200,7 +207,9 @@ public class CoinBallGame : MonoBehaviour
             Button(new Rect(left + Px(16), y, bw, bh), pauseTex, phase == Phase.Pause ? Resume : Pause);
         }
         Button(new Rect(Screen.width - right - Px(16) - bw, y, bw, bh), muted ? soundOffTex : soundOnTex, ToggleMute);
+        if (phase == Phase.Play && !moved) DrawHand(Screen.width * 0.5f - Px(100), Screen.height * 0.58f, Px(200));
         if (phase == Phase.Play && dragging) DrawStick();
+        DrawCredit(top);
     }
 
     void DrawTitle()
@@ -209,10 +218,10 @@ public class CoinBallGame : MonoBehaviour
         float w = Mathf.Min(Screen.width - Px(48), Px(680));
         float x = (Screen.width - w) * 0.5f;
         float y = Screen.height * 0.16f;
-        BlitCentered(titleTex, x, y, w, Px(96));
-        BlitCentered(dragTex, x, y + Px(110), w, Px(52));
-        BlitCentered(collectTex, x, y + Px(170), w, Px(52));
-        Button(new Rect(x + (w - Px(460)) * 0.5f, y + Px(260), Px(460), Px(92)), startTex, StartPlay);
+        BlitCentered(titleTex, x, y, w, Px(84));
+        DrawHand(x, y + Px(96), w);
+        BlitCentered(collectTex, x, y + Px(220), w, Px(48));
+        Button(new Rect(x + (w - Px(460)) * 0.5f, y + Px(290), Px(460), Px(92)), startTex, StartPlay);
     }
 
     void DrawPause()
@@ -306,6 +315,33 @@ public class CoinBallGame : MonoBehaviour
         phase = Phase.Play;
         elapsed = 0f;
         Unlock();
+        StartCoroutine(SpeakIntro());
+    }
+
+    IEnumerator SpeakIntro()
+    {
+        yield return Speak(whoClip);
+        if (phase != Phase.Play) yield break;
+        yield return Speak(weatherClip);
+    }
+
+    IEnumerator Speak(AudioClip clip)
+    {
+        if (clip == null || muted || source == null) yield break;
+        source.clip = clip;
+        source.Play();
+        yield return new WaitForSeconds(clip.length);
+    }
+
+    void DrawHand(float x, float y, float w)
+    {
+        float slide = Mathf.Sin(Time.time * 2.6f) * Px(34);
+        BlitCentered(handTex, x + slide, y, w, Px(120));
+    }
+
+    void DrawCredit(float top)
+    {
+        BlitCentered(creditTex, Screen.width - Px(360), top + Px(62), Px(340), Px(30));
     }
 
     void Pause()
@@ -333,6 +369,7 @@ public class CoinBallGame : MonoBehaviour
     void ToggleMute()
     {
         muted = !muted;
+        if (muted && source != null) source.Stop();
         PlayerPrefs.SetInt(MuteKey, muted ? 1 : 0);
     }
 
@@ -437,6 +474,16 @@ public class CoinPickup : MonoBehaviour
     }
 
     void OnTriggerEnter(Collider other)
+    {
+        TryTake(other);
+    }
+
+    void OnTriggerStay(Collider other)
+    {
+        TryTake(other);
+    }
+
+    void TryTake(Collider other)
     {
         if (taken || game == null || !other.GetComponent<BallTag>()) return;
         game.Collect(this);

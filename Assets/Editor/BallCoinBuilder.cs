@@ -49,11 +49,11 @@ public static class BallCoinBuilder
 
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
         Camera cam = Camera.main;
-        cam.transform.position = new Vector3(0f, 12.5f, -8.5f);
-        cam.transform.rotation = Quaternion.Euler(52f, 0f, 0f);
+        cam.transform.position = new Vector3(0f, 16f, -4.2f);
+        cam.transform.rotation = Quaternion.Euler(72f, 0f, 0f);
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = new Color(0.07f, 0.12f, 0.18f);
-        cam.fieldOfView = 40f;
+        cam.fieldOfView = 36f;
         RenderSettings.skybox = null;
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
         RenderSettings.ambientLight = new Color(0.42f, 0.48f, 0.55f);
@@ -105,7 +105,7 @@ public static class BallCoinBuilder
         for (int i = 0; i < coins.Length; i++)
         {
             float ang = i * Mathf.PI * 2f / coins.Length;
-            float rad = (i % 2 == 0) ? 2.5f : 5.1f;
+            float rad = (i % 2 == 0) ? 1.85f : 3.45f;
             GameObject coin = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             coin.name = "Coin" + i;
             coin.transform.SetParent(holder.transform);
@@ -115,7 +115,7 @@ public static class BallCoinBuilder
             Object.DestroyImmediate(coin.GetComponent<Collider>());
             BoxCollider box = coin.AddComponent<BoxCollider>();
             box.isTrigger = true;
-            box.size = new Vector3(1.5f, 12f, 1.5f);
+            box.size = new Vector3(2.4f, 18f, 2.4f);
             CoinPickup pickup = coin.AddComponent<CoinPickup>();
             pickup.game = game;
             coins[i] = pickup;
@@ -190,7 +190,7 @@ public static class BallCoinBuilder
     static void ConfigurePlayer()
     {
         PlayerSettings.companyName = "Titans";
-        PlayerSettings.productName = "BallCoin";
+        PlayerSettings.productName = "101-コイン集め";
         PlayerSettings.bundleVersion = "1.0";
         PlayerSettings.defaultWebScreenWidth = 960;
         PlayerSettings.defaultWebScreenHeight = 600;
