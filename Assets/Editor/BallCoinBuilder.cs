@@ -43,7 +43,7 @@ public static class BallCoinBuilder
 
         Texture2D checker = Checker();
         Material floorMat = MakeMat("Floor", new Color(0.75f, 0.8f, 0.84f), 0f, 0.08f, checker, new Vector2(8f, 8f), Color.black);
-        Material wallMat = MakeMat("Wall", new Color(0.16f, 0.24f, 0.32f), 0.05f, 0.2f, null, Vector2.one, Color.black);
+        Material wallMat = MakeMat("Wall", new Color(0.94f, 0.88f, 0.7f), 0.02f, 0.28f, null, Vector2.one, Color.black);
         Material ballMat = MakeMat("Ball", new Color(0.45f, 0.78f, 0.95f), 0.15f, 0.62f, null, Vector2.one, Color.black);
         Material coinMat = MakeMat("Coin", new Color(1f, 0.78f, 0.18f), 0.85f, 0.72f, null, Vector2.one, new Color(0.45f, 0.28f, 0.02f));
 
@@ -69,13 +69,32 @@ public static class BallCoinBuilder
 
         GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
         floor.name = "Floor";
-        floor.transform.localScale = new Vector3(1.6f, 1f, 1.6f);
+        floor.transform.position = new Vector3(0f, 0f, 1.42f);
+        floor.transform.localScale = new Vector3(0.62f, 1f, 0.9f);
         floor.GetComponent<Renderer>().sharedMaterial = floorMat;
 
-        Wall(wallMat, new Vector3(0f, 1f, 7.5f), new Vector3(16f, 2f, 1f));
-        Wall(wallMat, new Vector3(0f, 1f, -7.5f), new Vector3(16f, 2f, 1f));
-        Wall(wallMat, new Vector3(7.5f, 1f, 0f), new Vector3(1f, 2f, 16f));
-        Wall(wallMat, new Vector3(-7.5f, 1f, 0f), new Vector3(1f, 2f, 16f));
+        PhysicsMaterial bounce = new PhysicsMaterial("Wall");
+        bounce.dynamicFriction = 0.04f;
+        bounce.staticFriction = 0.04f;
+        bounce.bounciness = 0.96f;
+        bounce.frictionCombine = PhysicsMaterialCombine.Minimum;
+        bounce.bounceCombine = PhysicsMaterialCombine.Maximum;
+        const string bouncePath = "Assets/Materials/Wall.physicMaterial";
+        if (AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(bouncePath) != null)
+            AssetDatabase.DeleteAsset(bouncePath);
+        AssetDatabase.CreateAsset(bounce, bouncePath);
+
+        // Inner faces sit on the phone picture: x ±2, z -2.15..5. Ball cannot leave the screen.
+        const float thick = 0.32f;
+        const float halfX = 2f;
+        const float nearZ = -2.15f;
+        const float farZ = 5f;
+        float midZ = (nearZ + farZ) * 0.5f;
+        float depth = (farZ - nearZ) + thick;
+        Wall(wallMat, bounce, new Vector3(-halfX - thick * 0.5f, 1.15f, midZ), new Vector3(thick, 2.3f, depth));
+        Wall(wallMat, bounce, new Vector3(halfX + thick * 0.5f, 1.15f, midZ), new Vector3(thick, 2.3f, depth));
+        Wall(wallMat, bounce, new Vector3(0f, 1.15f, nearZ - thick * 0.5f), new Vector3(halfX * 2f + thick, 2.3f, thick));
+        Wall(wallMat, bounce, new Vector3(0f, 1.15f, farZ + thick * 0.5f), new Vector3(halfX * 2f + thick, 2.3f, thick));
 
         GameObject ballGo = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         ballGo.name = "Ball";
@@ -85,37 +104,49 @@ public static class BallCoinBuilder
         ballGo.AddComponent<BallTag>();
         Rigidbody rb = ballGo.AddComponent<Rigidbody>();
         rb.mass = 1f;
-        rb.linearDamping = 1.35f;
+        rb.linearDamping = 0.4f;
         rb.angularDamping = 0.35f;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.constraints = RigidbodyConstraints.FreezePositionY;
         PhysicsMaterial friction = new PhysicsMaterial("Ball");
-        friction.dynamicFriction = 0.45f;
-        friction.staticFriction = 0.45f;
-        friction.bounciness = 0.12f;
-        AssetDatabase.CreateAsset(friction, "Assets/Materials/Ball.physicMaterial");
+        friction.dynamicFriction = 0.15f;
+        friction.staticFriction = 0.15f;
+        friction.bounciness = 0.75f;
+        friction.frictionCombine = PhysicsMaterialCombine.Minimum;
+        friction.bounceCombine = PhysicsMaterialCombine.Maximum;
+        const string ballMatPath = "Assets/Materials/Ball.physicMaterial";
+        if (AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(ballMatPath) != null)
+            AssetDatabase.DeleteAsset(ballMatPath);
+        AssetDatabase.CreateAsset(friction, ballMatPath);
         ballGo.GetComponent<SphereCollider>().material = friction;
 
         GameObject host = new GameObject("Game");
         CoinBallGame game = host.AddComponent<CoinBallGame>();
 
         GameObject holder = new GameObject("Coins");
-        CoinPickup[] coins = new CoinPickup[12];
-        for (int i = 0; i < coins.Length; i++)
+        Vector2[] spots =
         {
-            float ang = i * Mathf.PI * 2f / coins.Length;
-            float rad = (i % 2 == 0) ? 1.85f : 3.45f;
+            new Vector2(-1.15f, -0.75f), new Vector2(1.15f, -0.75f),
+            new Vector2(-1.15f, 0.80f), new Vector2(1.15f, 0.80f),
+            new Vector2(-1.15f, 2.05f), new Vector2(1.15f, 2.05f),
+            new Vector2(-1.15f, 3.15f), new Vector2(1.15f, 3.15f),
+            new Vector2(-0.40f, 3.35f), new Vector2(0.40f, 3.35f),
+            new Vector2(0f, 1.60f), new Vector2(0f, 2.55f)
+        };
+        CoinPickup[] coins = new CoinPickup[spots.Length];
+        for (int i = 0; i < spots.Length; i++)
+        {
             GameObject coin = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             coin.name = "Coin" + i;
             coin.transform.SetParent(holder.transform);
-            coin.transform.position = new Vector3(Mathf.Cos(ang) * rad, 0.16f, Mathf.Sin(ang) * rad);
+            coin.transform.position = new Vector3(spots[i].x, 0.16f, spots[i].y);
             coin.transform.localScale = new Vector3(0.72f, 0.07f, 0.72f);
             coin.GetComponent<Renderer>().sharedMaterial = coinMat;
             Object.DestroyImmediate(coin.GetComponent<Collider>());
             BoxCollider box = coin.AddComponent<BoxCollider>();
             box.isTrigger = true;
-            box.size = new Vector3(2.4f, 18f, 2.4f);
+            box.size = new Vector3(1.7f, 20f, 1.7f);
             CoinPickup pickup = coin.AddComponent<CoinPickup>();
             pickup.game = game;
             coins[i] = pickup;
@@ -136,13 +167,14 @@ public static class BallCoinBuilder
         return scenePath;
     }
 
-    static void Wall(Material mat, Vector3 pos, Vector3 scale)
+    static void Wall(Material mat, PhysicsMaterial bounce, Vector3 pos, Vector3 scale)
     {
         GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
         wall.name = "Wall";
         wall.transform.position = pos;
         wall.transform.localScale = scale;
         wall.GetComponent<Renderer>().sharedMaterial = mat;
+        wall.GetComponent<Collider>().material = bounce;
     }
 
     static Material MakeMat(string name, Color color, float metallic, float gloss, Texture2D tex, Vector2 scale, Color emission)

@@ -139,13 +139,16 @@ public class CoinBallGame : MonoBehaviour
     void KeepInside()
     {
         Vector3 p = ball.position;
-        if (p.y >= 0.2f && p.y <= 1.2f && Mathf.Abs(p.x) <= 6.4f && Mathf.Abs(p.z) <= 6.4f) return;
-        p.x = Mathf.Clamp(p.x, -6.4f, 6.4f);
-        p.y = 0.45f;
-        p.z = Mathf.Clamp(p.z, -6.4f, 6.4f);
-        ball.position = p;
         Vector3 v = ball.linearVelocity;
-        ball.linearVelocity = new Vector3(Mathf.Clamp(v.x, -MaxSpeed, MaxSpeed), 0f, Mathf.Clamp(v.z, -MaxSpeed, MaxSpeed));
+        bool hit = false;
+        if (p.x < -1.62f) { p.x = -1.62f; v.x = Mathf.Abs(v.x) * 0.7f; hit = true; }
+        else if (p.x > 1.62f) { p.x = 1.62f; v.x = -Mathf.Abs(v.x) * 0.7f; hit = true; }
+        if (p.z < -1.78f) { p.z = -1.78f; v.z = Mathf.Abs(v.z) * 0.7f; hit = true; }
+        else if (p.z > 4.62f) { p.z = 4.62f; v.z = -Mathf.Abs(v.z) * 0.7f; hit = true; }
+        if (p.y < 0.2f || p.y > 1.2f) { p.y = 0.45f; v.y = 0f; hit = true; }
+        if (!hit) return;
+        ball.position = p;
+        ball.linearVelocity = v;
     }
 
     public void Collect(CoinPickup coin)
